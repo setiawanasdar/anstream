@@ -5,13 +5,10 @@ import { notFound } from "next/navigation";
 import {
   Star,
   Play,
-  Calendar,
   Clock,
   Film,
-  Building,
   Tv,
   Sparkles,
-  Share2,
   ChevronRight,
   ListOrdered,
 } from "lucide-react";
@@ -20,6 +17,8 @@ import { BookmarkButton } from "@/components/anime/BookmarkButton";
 import { AnimeCard } from "@/components/anime/AnimeCard";
 import { getCleanSynopsis, cleanSlug } from "@/lib/utils";
 
+export const dynamic = "force-dynamic";
+
 interface PageProps {
   params: Promise<{ id: string }>;
 }
@@ -27,16 +26,11 @@ interface PageProps {
 export async function generateMetadata({ params }: PageProps) {
   const { id } = await params;
   const anime = await sankaApi.getAnimeDetail(id);
-  if (!anime) return { title: "Anime Tidak Ditemukan" };
+  if (!anime) return { title: "Anime Detail" };
 
   return {
     title: `Nonton ${anime.title} Subtitle Indonesia`,
     description: `Streaming dan download anime ${anime.title} subtitle indonesia gratis kualitas HD.`,
-    openGraph: {
-      title: `Nonton ${anime.title} Sub Indo`,
-      description: `Streaming anime ${anime.title} Subtitle Indonesia HD.`,
-      images: [anime.poster],
-    },
   };
 }
 
@@ -49,21 +43,16 @@ export default async function AnimeDetailPage({ params }: PageProps) {
   }
 
   const synopsisText = getCleanSynopsis(anime.synopsis);
-  const firstEpisode = anime.episodeList && anime.episodeList.length > 0
-    ? anime.episodeList[anime.episodeList.length - 1] // usually episode 1 is at the end or we pick first
-    : null;
   const latestEpisode = anime.episodeList && anime.episodeList.length > 0
     ? anime.episodeList[0]
     : null;
 
   return (
     <div className="space-y-8 pb-10">
-      {/* 1. Header Hero Card with Soft Dark Aesthetics */}
       <div className="relative rounded-3xl overflow-hidden bg-[#131b2a] border border-[#1e2c40] p-5 sm:p-8 shadow-xl">
-        {/* Blurred Background Poster */}
         <div className="absolute inset-0 z-0">
           <Image
-            src={anime.poster}
+            src={anime.poster || "https://placehold.co/300x400/131b2a/94a3b8?text=Poster"}
             alt={anime.title}
             fill
             priority
@@ -74,12 +63,10 @@ export default async function AnimeDetailPage({ params }: PageProps) {
           <div className="absolute inset-0 bg-gradient-to-t from-[#131b2a] via-[#131b2a]/95 to-transparent" />
         </div>
 
-        {/* Content Details */}
         <div className="relative z-10 flex flex-col md:flex-row gap-6 md:gap-8 items-start">
-          {/* Cover Poster */}
           <div className="relative w-48 sm:w-56 md:w-64 aspect-[3/4] rounded-2xl overflow-hidden shadow-2xl border border-[#273549] shrink-0 mx-auto md:mx-0">
             <Image
-              src={anime.poster}
+              src={anime.poster || "https://placehold.co/300x400/131b2a/94a3b8?text=Poster"}
               alt={anime.title}
               fill
               priority
@@ -94,21 +81,17 @@ export default async function AnimeDetailPage({ params }: PageProps) {
             )}
           </div>
 
-          {/* Metadata Information */}
           <div className="flex-1 flex flex-col items-center md:items-start text-center md:text-left">
-            {/* Japanese / Alternative title */}
             {anime.japanese && (
               <span className="text-xs font-medium text-[#94a3b8] mb-1">
                 {anime.japanese}
               </span>
             )}
 
-            {/* Main Title */}
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#f1f5f9] leading-tight mb-3">
               {anime.title}
             </h1>
 
-            {/* Badges Bar */}
             <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 mb-5">
               {anime.score && (
                 <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#fbbf24]/10 text-[#fbbf24] border border-[#fbbf24]/30 text-xs font-bold">
@@ -136,7 +119,6 @@ export default async function AnimeDetailPage({ params }: PageProps) {
               )}
             </div>
 
-            {/* Genre Tags */}
             {anime.genreList && anime.genreList.length > 0 && (
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-1.5 mb-6">
                 {anime.genreList.map((g) => {
@@ -154,7 +136,6 @@ export default async function AnimeDetailPage({ params }: PageProps) {
               </div>
             )}
 
-            {/* Action Buttons */}
             <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 w-full pt-2">
               {latestEpisode && (
                 <Link
@@ -178,7 +159,6 @@ export default async function AnimeDetailPage({ params }: PageProps) {
           </div>
         </div>
 
-        {/* Metadata Details Grid */}
         <div className="relative z-10 mt-8 pt-6 border-t border-[#1e2c40] grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 text-xs text-[#94a3b8]">
           <div>
             <span className="text-[#64748b] block mb-0.5">Studio:</span>
@@ -199,7 +179,6 @@ export default async function AnimeDetailPage({ params }: PageProps) {
         </div>
       </div>
 
-      {/* 2. Synopsis Section */}
       <div className="rounded-3xl bg-[#131b2a] border border-[#1e2c40] p-6 space-y-3">
         <h2 className="text-base sm:text-lg font-bold text-[#f1f5f9] flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-[#38bdf8]" />
@@ -210,7 +189,6 @@ export default async function AnimeDetailPage({ params }: PageProps) {
         </div>
       </div>
 
-      {/* 3. Episodes List */}
       <div className="rounded-3xl bg-[#131b2a] border border-[#1e2c40] p-6 space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-base sm:text-lg font-bold text-[#f1f5f9] flex items-center gap-2">
@@ -255,7 +233,6 @@ export default async function AnimeDetailPage({ params }: PageProps) {
         )}
       </div>
 
-      {/* 4. Recommendations Section */}
       {anime.recommendedAnimeList && anime.recommendedAnimeList.length > 0 && (
         <div className="space-y-4">
           <h2 className="text-base sm:text-lg font-bold text-[#f1f5f9] flex items-center gap-2">

@@ -4,6 +4,8 @@ import { sankaApi } from "@/lib/api/sanka";
 import { AnimeCard } from "@/components/anime/AnimeCard";
 import { Pagination } from "@/components/ui/Pagination";
 
+export const dynamic = "force-dynamic";
+
 interface PageProps {
   params: Promise<{ genreId: string }>;
   searchParams: Promise<{ page?: string }>;

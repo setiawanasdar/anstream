@@ -4,6 +4,8 @@ import { sankaApi } from "@/lib/api/sanka";
 import { AnimeCard } from "@/components/anime/AnimeCard";
 import { Pagination } from "@/components/ui/Pagination";
 
+export const dynamic = "force-dynamic";
+
 interface PageProps {
   searchParams: Promise<{ page?: string }>;
 }
@@ -21,7 +23,6 @@ export default async function OngoingPage({ searchParams }: PageProps) {
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Header */}
       <div className="flex items-center gap-3 pb-4 border-b border-[#1e2c40]">
         <div className="p-2.5 rounded-2xl bg-[#6366f1]/20 text-[#38bdf8] border border-[#6366f1]/30">
           <Flame className="w-6 h-6 text-[#38bdf8]" />
@@ -34,7 +35,6 @@ export default async function OngoingPage({ searchParams }: PageProps) {
         </div>
       </div>
 
-      {/* Grid */}
       {animeList && animeList.length > 0 ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4">
           {animeList.map((anime, idx) => (
@@ -47,7 +47,6 @@ export default async function OngoingPage({ searchParams }: PageProps) {
         </div>
       )}
 
-      {/* Pagination */}
       {pagination && <Pagination pagination={pagination} baseUrl="/ongoing" />}
     </div>
   );

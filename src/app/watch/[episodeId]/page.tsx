@@ -1,11 +1,13 @@
 import React from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft, Film, Info, Calendar, Sparkles } from "lucide-react";
+import { ChevronLeft, Calendar } from "lucide-react";
 import { sankaApi } from "@/lib/api/sanka";
 import { VideoPlayer } from "@/components/player/VideoPlayer";
 import { EpisodeDrawer } from "@/components/player/EpisodeDrawer";
 import { cleanSlug } from "@/lib/utils";
+
+export const dynamic = "force-dynamic";
 
 interface PageProps {
   params: Promise<{ episodeId: string }>;
@@ -14,7 +16,7 @@ interface PageProps {
 export async function generateMetadata({ params }: PageProps) {
   const { episodeId } = await params;
   const streamData = await sankaApi.getEpisodeStream(episodeId);
-  if (!streamData) return { title: "Episode Tidak Ditemukan" };
+  if (!streamData) return { title: "Nonton Anime Episode" };
 
   return {
     title: `Nonton ${streamData.title}`,
@@ -31,7 +33,6 @@ export default async function WatchPage({ params }: PageProps) {
     notFound();
   }
 
-  // Fetch parent anime detail to populate complete episode list
   let animeDetail = null;
   if (streamData.animeId) {
     animeDetail = await sankaApi.getAnimeDetail(cleanSlug(streamData.animeId));
@@ -41,7 +42,6 @@ export default async function WatchPage({ params }: PageProps) {
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Top Breadcrumb & Anime Nav */}
       <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
         <Link
           href={streamData.animeId ? `/anime/${cleanSlug(streamData.animeId)}` : "/"}
@@ -59,13 +59,10 @@ export default async function WatchPage({ params }: PageProps) {
         )}
       </div>
 
-      {/* Main Watch Layout (Video Screen + Episode Drawer) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-        {/* Left 2 Cols: Video Player & Server Switcher */}
         <div className="lg:col-span-2 space-y-4">
           <VideoPlayer streamData={streamData} episodeId={cleanEpId} />
 
-          {/* Episode Info Box */}
           <div className="rounded-2xl bg-[#131b2a] border border-[#1e2c40] p-5 space-y-2">
             <h1 className="text-lg md:text-xl font-bold text-[#f1f5f9] leading-snug">
               {streamData.title}
@@ -76,7 +73,6 @@ export default async function WatchPage({ params }: PageProps) {
           </div>
         </div>
 
-        {/* Right 1 Col: Episodes Drawer / Side Panel */}
         <div className="lg:col-span-1">
           <EpisodeDrawer
             episodes={episodes}

@@ -10,7 +10,9 @@ import {
   Pagination,
 } from "@/types/anime";
 
-const BASE_URL = process.env.SANKAVOLLEREI_API_BASE_URL || "https://www.sankavollerei.web.id";
+// Clean and normalize BASE_URL to prevent duplicate /anime or trailing slashes
+const RAW_URL = process.env.SANKAVOLLEREI_API_BASE_URL || "https://www.sankavollerei.web.id";
+const BASE_URL = RAW_URL.trim().replace(/\/+$/, "").replace(/\/anime$/, "");
 
 interface ApiResponse<T> {
   status: string;

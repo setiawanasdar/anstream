@@ -3,6 +3,8 @@ import { Search } from "lucide-react";
 import { sankaApi } from "@/lib/api/sanka";
 import { AnimeCard } from "@/components/anime/AnimeCard";
 
+export const dynamic = "force-dynamic";
+
 interface PageProps {
   searchParams: Promise<{ q?: string }>;
 }
