@@ -13,7 +13,6 @@ import {
   ExternalLink,
   Smartphone,
   Expand,
-  Zap,
 } from "lucide-react";
 import { ServerSelector } from "./ServerSelector";
 import { DownloadBox } from "./DownloadBox";
@@ -135,16 +134,16 @@ export function VideoPlayer({ streamData, episodeId }: VideoPlayerProps) {
   };
 
   return (
-    <div className={`flex flex-col gap-3 sm:gap-4 ${isTheaterMode ? "max-w-none" : "w-full"}`}>
+    <div className={`flex flex-col gap-3.5 sm:gap-4 ${isTheaterMode ? "max-w-none" : "w-full"}`}>
       {/* 
         Video Player Screen Wrapper
-        - On mobile: edge-to-edge (-mx-4 sm:mx-0), rounded-none sm:rounded-2xl
-        - Height / Aspect ratio: aspect-video with min-height guarantee for mobile touch controls
+        - Clean centered container matching all cards width
+        - 16:9 Aspect Ratio with minimum mobile height
       */}
       <div
         ref={containerRef}
-        className={`relative w-full aspect-video min-h-[220px] sm:min-h-[340px] md:min-h-[420px] -mx-4 sm:mx-0 w-[calc(100%+2rem)] sm:w-full bg-[#05080f] sm:rounded-2xl md:rounded-3xl overflow-hidden border-y sm:border border-[#1e2c40] shadow-2xl transition-all ${
-          isFullscreen ? "!w-screen !h-screen !min-h-screen !m-0 !rounded-none !border-0 z-50 fixed inset-0" : ""
+        className={`relative w-full aspect-video min-h-[210px] sm:min-h-[320px] md:min-h-[420px] bg-[#05080f] rounded-2xl md:rounded-3xl overflow-hidden border border-[#1e2c40] shadow-2xl transition-all ${
+          isFullscreen ? "!w-screen !h-screen !min-h-screen !m-0 !rounded-none !border-0 z-50 fixed inset-0 flex items-center justify-center bg-black" : ""
         }`}
       >
         {/* Loading Overlay */}
@@ -155,7 +154,7 @@ export function VideoPlayer({ streamData, episodeId }: VideoPlayerProps) {
           </div>
         )}
 
-        {/* Floating Android Fullscreen Overlay Button (Always visible on mobile & desktop) */}
+        {/* Floating Android Fullscreen Overlay Button */}
         {currentStreamUrl && (
           <div className="absolute top-2.5 right-2.5 z-20 flex items-center gap-1.5 pointer-events-auto">
             <button
@@ -207,8 +206,8 @@ export function VideoPlayer({ streamData, episodeId }: VideoPlayerProps) {
       {/* Quick Mobile Assistance Bar (Khusus Layar HP / Android) */}
       <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#131b2a] border border-[#1e2c40] text-xs text-[#94a3b8]">
         <div className="flex items-center gap-1.5 text-[11px]">
-          <Smartphone className="w-3.5 h-3.5 text-[#38bdf8]" />
-          <span>Tips Android: Tekan tombol <strong>&quot;Layar Penuh&quot;</strong> di atas untuk nonton tanpa terpotong.</span>
+          <Smartphone className="w-3.5 h-3.5 text-[#38bdf8] shrink-0" />
+          <span>Tips Android: Tekan tombol <strong>&quot;Layar Penuh&quot;</strong> di atas untuk rotasi otomatis.</span>
         </div>
 
         {currentStreamUrl && (
@@ -241,7 +240,7 @@ export function VideoPlayer({ streamData, episodeId }: VideoPlayerProps) {
           ) : (
             <button
               disabled
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#1e293b]/40 text-xs font-medium text-[#64748b] cursor-not-allowed border border-[#1e2c40]/40"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#1e293b]/40 text-xs font-medium text-[#64748b] cursor-not-allowed border border-[#1e2c40]/40"
             >
               <ChevronLeft className="w-4 h-4" />
               <span className="hidden sm:inline">Episode Pertama</span>
