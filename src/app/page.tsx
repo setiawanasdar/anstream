@@ -6,7 +6,7 @@ import { HeroBanner } from "@/components/home/HeroBanner";
 import { AnimeCard } from "@/components/anime/AnimeCard";
 import type { ScheduleItem, HomeAnimeData } from "@/types/anime";
 
-export const revalidate = 120; // ISR cache 2 minutes
+export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   let homeData: HomeAnimeData | null = null;
