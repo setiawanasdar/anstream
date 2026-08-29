@@ -53,6 +53,50 @@ export function VideoPlayer({ streamData, episodeId }: VideoPlayerProps) {
     }
   }, [episodeId, streamData]);
 
+  // Smart Auto-Select Server on mount to bypass CSP frame-ancestors block on default stream
+  useEffect(() => {
+    async function autoPickServer() {
+      if (!streamData.server?.qualities || streamData.server.qualities.length === 0) return;
+
+      // Check if defaultStreamingUrl is restricted or if we have preferred servers (filedon, vidhide, mega, ondesuhd)
+      const isDesuStream = (streamData.defaultStreamingUrl || "").includes("desustream");
+      
+      if (isDesuStream || !streamData.defaultStreamingUrl) {
+        // Find best server from 720p or 480p
+        const qual720 = streamData.server.qualities.find((q) => q.title.includes("720"));
+        const qual480 = streamData.server.qualities.find((q) => q.title.includes("480"));
+        const targetQual = qual720 || qual480 || streamData.server.qualities[0];
+
+        if (targetQual && targetQual.serverList.length > 0) {
+          // Prefer filedon, vidhide, mega, ondesuhd over odstream/desustream
+          const preferredServer =
+            targetQual.serverList.find((s) =>
+              s.title.toLowerCase().includes("filedon") ||
+              s.title.toLowerCase().includes("vidhide") ||
+              s.title.toLowerCase().includes("mega") ||
+              s.title.toLowerCase().includes("ondesuhd")
+            ) || targetQual.serverList[0];
+
+          if (preferredServer) {
+            setSelectedServer(preferredServer);
+            try {
+              const res = await fetch(`/api/anime/server/${cleanSlug(preferredServer.serverId)}`);
+              const json = await res.json();
+              if (json.data && json.data.url) {
+                setCurrentStreamUrl(json.data.url);
+                setPlayerKey((k) => k + 1);
+              }
+            } catch (err) {
+              console.warn("Auto-switch server error:", err);
+            }
+          }
+        }
+      }
+    }
+
+    autoPickServer();
+  }, [episodeId, streamData]);
+
   // Track Fullscreen Change Events
   useEffect(() => {
     const handleFullscreenChange = () => {
