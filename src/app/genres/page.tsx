@@ -4,6 +4,8 @@ import { Sparkles, Tag } from "lucide-react";
 import { sankaApi } from "@/lib/api/sanka";
 import { cleanSlug } from "@/lib/utils";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "Daftar Genre Anime Lengkap",
   description: "Jelajahi anime berdasarkan genre favorit seperti Action, Isekai, Romance, Fantasy, dan lainnya.",
