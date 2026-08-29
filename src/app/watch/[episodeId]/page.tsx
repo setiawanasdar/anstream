@@ -1,0 +1,90 @@
+import React from "react";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { ChevronLeft, Film, Info, Calendar, Sparkles } from "lucide-react";
+import { sankaApi } from "@/lib/api/sanka";
+import { VideoPlayer } from "@/components/player/VideoPlayer";
+import { EpisodeDrawer } from "@/components/player/EpisodeDrawer";
+import { cleanSlug } from "@/lib/utils";
+
+interface PageProps {
+  params: Promise<{ episodeId: string }>;
+}
+
+export async function generateMetadata({ params }: PageProps) {
+  const { episodeId } = await params;
+  const streamData = await sankaApi.getEpisodeStream(episodeId);
+  if (!streamData) return { title: "Episode Tidak Ditemukan" };
+
+  return {
+    title: `Nonton ${streamData.title}`,
+    description: `Streaming online ${streamData.title} Subtitle Indonesia gratis kualitas HD.`,
+  };
+}
+
+export default async function WatchPage({ params }: PageProps) {
+  const { episodeId } = await params;
+  const cleanEpId = cleanSlug(episodeId);
+
+  const streamData = await sankaApi.getEpisodeStream(cleanEpId);
+  if (!streamData) {
+    notFound();
+  }
+
+  // Fetch parent anime detail to populate complete episode list
+  let animeDetail = null;
+  if (streamData.animeId) {
+    animeDetail = await sankaApi.getAnimeDetail(cleanSlug(streamData.animeId));
+  }
+
+  const episodes = animeDetail?.episodeList || [];
+
+  return (
+    <div className="space-y-6 pb-12">
+      {/* Top Breadcrumb & Anime Nav */}
+      <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+        <Link
+          href={streamData.animeId ? `/anime/${cleanSlug(streamData.animeId)}` : "/"}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#131b2a] hover:bg-[#1e2c40] text-[#cbd5e1] hover:text-[#38bdf8] border border-[#1e2c40] transition-colors"
+        >
+          <ChevronLeft className="w-4 h-4" />
+          <span>Kembali ke Detail Anime</span>
+        </Link>
+
+        {streamData.releaseTime && (
+          <div className="flex items-center gap-1 text-[#94a3b8]">
+            <Calendar className="w-3.5 h-3.5" />
+            <span>Diperbarui: {streamData.releaseTime}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Main Watch Layout (Video Screen + Episode Drawer) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        {/* Left 2 Cols: Video Player & Server Switcher */}
+        <div className="lg:col-span-2 space-y-4">
+          <VideoPlayer streamData={streamData} episodeId={cleanEpId} />
+
+          {/* Episode Info Box */}
+          <div className="rounded-2xl bg-[#131b2a] border border-[#1e2c40] p-5 space-y-2">
+            <h1 className="text-lg md:text-xl font-bold text-[#f1f5f9] leading-snug">
+              {streamData.title}
+            </h1>
+            <p className="text-xs text-[#94a3b8] leading-relaxed">
+              Jika video mengalami buffering atau tidak dapat diputar, gunakan pilihan server alternatif di atas atau gunakan tombol unduh untuk menonton secara offline.
+            </p>
+          </div>
+        </div>
+
+        {/* Right 1 Col: Episodes Drawer / Side Panel */}
+        <div className="lg:col-span-1">
+          <EpisodeDrawer
+            episodes={episodes}
+            currentEpisodeId={cleanEpId}
+            animeTitle={streamData.title}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}

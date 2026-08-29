@@ -1,0 +1,22 @@
+import { NextRequest, NextResponse } from "next/server";
+import { sankaApi } from "@/lib/api/sanka";
+
+export const dynamic = "force-dynamic";
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ genreId: string }> }
+) {
+  try {
+    const { genreId } = await params;
+    const searchParams = request.nextUrl.searchParams;
+    const page = parseInt(searchParams.get("page") || "1", 10);
+    const data = await sankaApi.getAnimeByGenre(genreId, page);
+    return NextResponse.json({ status: "success", ...data });
+  } catch (error: any) {
+    return NextResponse.json(
+      { status: "error", message: error.message || "Failed to fetch anime by genre" },
+      { status: 500 }
+    );
+  }
+}
