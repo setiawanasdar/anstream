@@ -13,6 +13,8 @@ import {
   ExternalLink,
   Smartphone,
   Expand,
+  ShieldCheck,
+  ShieldAlert,
 } from "lucide-react";
 import { ServerSelector } from "./ServerSelector";
 import { DownloadBox } from "./DownloadBox";
@@ -34,6 +36,7 @@ export function VideoPlayer({ streamData, episodeId }: VideoPlayerProps) {
   const [isLoadingServer, setIsLoadingServer] = useState(false);
   const [isTheaterMode, setIsTheaterMode] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isAdBlockEnabled, setIsAdBlockEnabled] = useState(true);
   const [playerKey, setPlayerKey] = useState(0);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -58,17 +61,14 @@ export function VideoPlayer({ streamData, episodeId }: VideoPlayerProps) {
     async function autoPickServer() {
       if (!streamData.server?.qualities || streamData.server.qualities.length === 0) return;
 
-      // Check if defaultStreamingUrl is restricted or if we have preferred servers (filedon, vidhide, mega, ondesuhd)
       const isDesuStream = (streamData.defaultStreamingUrl || "").includes("desustream");
       
       if (isDesuStream || !streamData.defaultStreamingUrl) {
-        // Find best server from 720p or 480p
         const qual720 = streamData.server.qualities.find((q) => q.title.includes("720"));
         const qual480 = streamData.server.qualities.find((q) => q.title.includes("480"));
         const targetQual = qual720 || qual480 || streamData.server.qualities[0];
 
         if (targetQual && targetQual.serverList.length > 0) {
-          // Prefer filedon, vidhide, mega, ondesuhd over odstream/desustream
           const preferredServer =
             targetQual.serverList.find((s) =>
               s.title.toLowerCase().includes("filedon") ||
@@ -157,7 +157,6 @@ export function VideoPlayer({ streamData, episodeId }: VideoPlayerProps) {
           await (container as any).msRequestFullscreen();
         }
 
-        // On mobile Android, attempt to lock to landscape mode for cinema experience
         if (screen.orientation && (screen.orientation as any).lock) {
           try {
             await (screen.orientation as any).lock("landscape");
@@ -181,8 +180,8 @@ export function VideoPlayer({ streamData, episodeId }: VideoPlayerProps) {
     <div className={`flex flex-col gap-3.5 sm:gap-4 ${isTheaterMode ? "max-w-none" : "w-full"}`}>
       {/* 
         Video Player Screen Wrapper
-        - Clean centered container matching all cards width
-        - 16:9 Aspect Ratio with minimum mobile height
+        - Centered container matching cards width
+        - 16:9 Aspect Ratio
       */}
       <div
         ref={containerRef}
@@ -221,7 +220,10 @@ export function VideoPlayer({ streamData, episodeId }: VideoPlayerProps) {
           </div>
         )}
 
-        {/* Video Embed Iframe with Full Touch & Fullscreen Capabilities */}
+        {/* 
+          Video Embed Iframe with Strict Sandbox Protection against Redirects & Popups
+          - When isAdBlockEnabled is true: sandbox blocks window.open, top.location redirect, and popup ads
+        */}
         {currentStreamUrl ? (
           <iframe
             ref={iframeRef}
@@ -231,6 +233,11 @@ export function VideoPlayer({ streamData, episodeId }: VideoPlayerProps) {
             className="absolute inset-0 w-full h-full border-0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
             allowFullScreen={true}
+            sandbox={
+              isAdBlockEnabled
+                ? "allow-scripts allow-same-origin allow-presentation allow-fullscreen allow-forms"
+                : undefined
+            }
             // @ts-ignore
             webkitallowfullscreen="true"
             mozallowfullscreen="true"
@@ -247,25 +254,52 @@ export function VideoPlayer({ streamData, episodeId }: VideoPlayerProps) {
         )}
       </div>
 
-      {/* Quick Mobile Assistance Bar (Khusus Layar HP / Android) */}
-      <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#131b2a] border border-[#1e2c40] text-xs text-[#94a3b8]">
-        <div className="flex items-center gap-1.5 text-[11px]">
-          <Smartphone className="w-3.5 h-3.5 text-[#38bdf8] shrink-0" />
-          <span>Tips Android: Tekan tombol <strong>&quot;Layar Penuh&quot;</strong> di atas untuk rotasi otomatis.</span>
-        </div>
+      {/* Quick Mobile Assistance & AdBlock Security Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-2xl bg-[#131b2a] border border-[#1e2c40] text-xs text-[#94a3b8]">
+        {/* AdBlock / Anti-Redirect Status Badge & Toggle */}
+        <button
+          onClick={() => {
+            setIsAdBlockEnabled(!isAdBlockEnabled);
+            setPlayerKey((k) => k + 1);
+          }}
+          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-semibold border transition-all ${
+            isAdBlockEnabled
+              ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/25"
+              : "bg-amber-500/15 text-amber-300 border-amber-500/30 hover:bg-amber-500/25"
+          }`}
+        >
+          {isAdBlockEnabled ? (
+            <>
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Anti-Popup & Iklan: AKTIF</span>
+            </>
+          ) : (
+            <>
+              <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
+              <span>Anti-Popup: NONAKTIF</span>
+            </>
+          )}
+        </button>
 
-        {currentStreamUrl && (
-          <a
-            href={currentStreamUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            title="Buka pemutar langsung di tab baru"
-            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#1e293b] hover:bg-[#6366f1] text-[#cbd5e1] hover:text-white text-[11px] font-medium border border-[#273549] transition-colors shrink-0 ml-2"
-          >
-            <span>Tab Baru</span>
-            <ExternalLink className="w-3 h-3" />
-          </a>
-        )}
+        <div className="flex items-center gap-2">
+          <div className="hidden sm:flex items-center gap-1 text-[11px] text-[#64748b]">
+            <Smartphone className="w-3.5 h-3.5 text-[#38bdf8]" />
+            <span>Mode Anti-Popup mencegah tab Anda diarahkan ke situs lain saat diklik.</span>
+          </div>
+
+          {currentStreamUrl && (
+            <a
+              href={currentStreamUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Buka pemutar langsung di tab baru"
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#1e293b] hover:bg-[#6366f1] text-[#cbd5e1] hover:text-white text-[11px] font-medium border border-[#273549] transition-colors shrink-0"
+            >
+              <span>Tab Baru</span>
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          )}
+        </div>
       </div>
 
       {/* Player Utility Bar (Prev, Next, Reload, Theater, Fullscreen) */}
