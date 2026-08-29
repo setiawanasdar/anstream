@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Search, X, Loader2, Play, Star, Sparkles } from "lucide-react";
+import { Search, X, Loader2, Play, Star, Sparkles, History, Trash2 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { cleanSlug } from "@/lib/utils";
@@ -13,12 +13,55 @@ interface SearchModalProps {
 }
 
 const POPULAR_GENRES = ["Action", "Adventure", "Isekai", "Romance", "Fantasy", "Comedy", "Shounen", "Sci-Fi"];
+const RECENT_SEARCHES_KEY = "nontonanime_recent_searches";
 
 export function SearchModal({ isOpen, onClose }: SearchModalProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchAnimeItem[]>([]);
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Load recent searches from localStorage
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(RECENT_SEARCHES_KEY);
+      if (stored) {
+        setRecentSearches(JSON.parse(stored));
+      }
+    } catch {
+      // Ignore
+    }
+  }, []);
+
+  // Save to recent searches
+  const saveRecentSearch = (term: string) => {
+    if (!term || !term.trim()) return;
+    const cleanTerm = term.trim();
+    const updated = [cleanTerm, ...recentSearches.filter((t) => t.toLowerCase() !== cleanTerm.toLowerCase())].slice(0, 8);
+    setRecentSearches(updated);
+    try {
+      localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated));
+    } catch {
+      // Ignore
+    }
+  };
+
+  const removeSingleRecent = (term: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const updated = recentSearches.filter((t) => t !== term);
+    setRecentSearches(updated);
+    try {
+      localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated));
+    } catch {}
+  };
+
+  const clearAllRecent = () => {
+    setRecentSearches([]);
+    try {
+      localStorage.removeItem(RECENT_SEARCHES_KEY);
+    } catch {}
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -67,23 +110,33 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
     return () => clearTimeout(timeoutId);
   }, [query]);
 
+  const handleSelectAnime = (title: string) => {
+    saveRecentSearch(title);
+    onClose();
+  };
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-14 md:pt-20 px-4 bg-[#0a0f18]/80 backdrop-blur-md">
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-14 md:pt-20 px-3 sm:px-4 bg-[#0a0f18]/85 backdrop-blur-md">
       <div
-        className="relative w-full max-w-2xl rounded-2xl bg-[#131b2a] border border-[#1e2c40] shadow-2xl overflow-hidden flex flex-col max-h-[80vh]"
+        className="relative w-full max-w-2xl rounded-3xl bg-[#131b2a] border border-[#1e2c40] shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Search Input Bar */}
         <div className="relative flex items-center px-4 py-3.5 border-b border-[#1e2c40]">
-          <Search className="w-5 h-5 text-[#94a3b8] mr-3 shrink-0" />
+          <Search className="w-5 h-5 text-[#38bdf8] mr-3 shrink-0" />
           <input
             ref={inputRef}
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Cari judul anime (contoh: Solo Leveling, Bleach, One Piece)..."
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && query.trim()) {
+                saveRecentSearch(query.trim());
+              }
+            }}
+            placeholder="Cari anime (Solo Leveling, Bleach, Naruto)..."
             className="w-full bg-transparent text-sm md:text-base text-[#f1f5f9] placeholder-[#64748b] focus:outline-none"
           />
           {isLoading && <Loader2 className="w-4 h-4 text-[#6366f1] animate-spin shrink-0 mx-2" />}
@@ -97,7 +150,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
           )}
           <button
             onClick={onClose}
-            className="px-2.5 py-1 text-xs font-medium text-[#94a3b8] hover:text-[#f1f5f9] bg-[#1e2c40] rounded-lg ml-2 shrink-0"
+            className="px-2.5 py-1 text-xs font-semibold text-[#94a3b8] hover:text-[#f1f5f9] bg-[#1e2c40] rounded-xl ml-2 shrink-0"
           >
             Tutup
           </button>
@@ -105,8 +158,47 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
 
         {/* Results / Suggestion Body */}
         <div className="overflow-y-auto p-4 space-y-4 no-scrollbar">
+          {/* Recent Searches Section */}
+          {!query && recentSearches.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs font-semibold text-[#94a3b8]">
+                <span className="flex items-center gap-1.5 text-[#cbd5e1]">
+                  <History className="w-3.5 h-3.5 text-[#38bdf8]" />
+                  Riwayat Pencarian Terakhir
+                </span>
+                <button
+                  onClick={clearAllRecent}
+                  className="text-[11px] text-[#64748b] hover:text-red-400 flex items-center gap-1 transition-colors"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  <span>Hapus Semua</span>
+                </button>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {recentSearches.map((term, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => setQuery(term)}
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#1a2538] hover:bg-[#1e2c40] text-xs font-medium text-[#cbd5e1] hover:text-[#38bdf8] border border-[#273549] cursor-pointer transition-colors group"
+                  >
+                    <span>{term}</span>
+                    <button
+                      onClick={(e) => removeSingleRecent(term, e)}
+                      title="Hapus"
+                      className="text-[#64748b] hover:text-red-400"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Popular Genre Quick Suggestions */}
           {!query && (
-            <div>
+            <div className="pt-2">
               <div className="flex items-center gap-1.5 text-xs font-semibold text-[#94a3b8] mb-2.5">
                 <Sparkles className="w-3.5 h-3.5 text-[#38bdf8]" />
                 <span>Pencarian Cepat Berdasarkan Genre:</span>
@@ -117,7 +209,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
                     key={genre}
                     href={`/genres/${genre.toLowerCase()}`}
                     onClick={onClose}
-                    className="px-3 py-1.5 rounded-xl bg-[#1a2538] hover:bg-[#6366f1]/20 hover:text-[#38bdf8] text-xs text-[#cbd5e1] border border-[#273549] transition-colors"
+                    className="px-3 py-1.5 rounded-xl bg-[#172033] hover:bg-[#6366f1]/20 hover:text-[#38bdf8] text-xs text-[#cbd5e1] border border-[#273549] transition-colors"
                   >
                     {genre}
                   </Link>
@@ -126,6 +218,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
             </div>
           )}
 
+          {/* Results List */}
           {query && results.length > 0 && (
             <div className="space-y-2">
               <div className="text-xs font-medium text-[#94a3b8] px-1">
@@ -138,10 +231,10 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
                     <Link
                       key={id}
                       href={`/anime/${id}`}
-                      onClick={onClose}
-                      className="flex items-center gap-3.5 p-2.5 rounded-xl bg-[#172033]/60 hover:bg-[#1e2c40] border border-transparent hover:border-[#384d6b] transition-all group"
+                      onClick={() => handleSelectAnime(anime.title)}
+                      className="flex items-center gap-3.5 p-2.5 rounded-2xl bg-[#172033]/60 hover:bg-[#1e293b] border border-transparent hover:border-[#384d6b] transition-all group"
                     >
-                      <div className="relative w-12 h-16 rounded-lg overflow-hidden shrink-0 bg-[#0d1422]">
+                      <div className="relative w-12 h-16 rounded-xl overflow-hidden shrink-0 bg-[#0d1422]">
                         <Image
                           src={anime.poster || "https://placehold.co/100x140/131b2a/94a3b8?text=Poster"}
                           alt={anime.title}
@@ -162,7 +255,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
                             </span>
                           )}
                           {anime.score && (
-                            <span className="flex items-center gap-1 text-[#fbbf24] text-[11px]">
+                            <span className="flex items-center gap-1 text-[#fbbf24] text-[11px] font-semibold">
                               <Star className="w-3 h-3 fill-current" />
                               {anime.score}
                             </span>
@@ -174,7 +267,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
                           )}
                         </div>
                       </div>
-                      <div className="p-2 rounded-lg bg-[#1e2c40] text-[#94a3b8] group-hover:text-white group-hover:bg-[#6366f1] transition-colors shrink-0">
+                      <div className="p-2 rounded-xl bg-[#1e2c40] text-[#94a3b8] group-hover:text-white group-hover:bg-[#6366f1] transition-colors shrink-0">
                         <Play className="w-4 h-4 fill-current ml-0.5" />
                       </div>
                     </Link>
@@ -184,6 +277,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
             </div>
           )}
 
+          {/* No results */}
           {query && !isLoading && results.length === 0 && (
             <div className="py-12 text-center text-[#94a3b8]">
               <p className="text-sm">Tidak menemukan anime untuk &quot;{query}&quot;.</p>

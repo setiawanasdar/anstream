@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Navbar } from "@/components/layout/Navbar";
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { Footer } from "@/components/layout/Footer";
+import { PWAInstallBanner } from "@/components/ui/PWAInstallBanner";
 import { SupabaseProvider } from "@/lib/supabase/provider";
 import "./globals.css";
 
@@ -10,7 +11,7 @@ export const metadata: Metadata = {
     default: "NontonAnime - Streaming Anime Subtitle Indonesia Gratis HD",
     template: "%s | NontonAnime",
   },
-  description: "Platform nonton anime subtitle Indonesia terlengkap, responsif untuk Android dan PC, tanpa iklan yang mengganggu dan nyaman di mata.",
+  description: "Platform nonton anime subtitle Indonesia terlengkap, responsif untuk Android dan PC, bebas iklan yang mengganggu dan nyaman di mata.",
   keywords: ["nonton anime", "streaming anime sub indo", "anime terbaru", "download anime", "otakudesu"],
   manifest: "/manifest.json",
   icons: {
@@ -44,6 +45,7 @@ export default function RootLayout({
           <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
             {children}
           </main>
+          <PWAInstallBanner />
           <MobileBottomNav />
           <Footer />
         </SupabaseProvider>

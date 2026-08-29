@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   RotateCcw,
   ChevronLeft,
@@ -15,6 +16,10 @@ import {
   Expand,
   ShieldCheck,
   ShieldAlert,
+  FastForward,
+  Play,
+  X,
+  Sparkles,
 } from "lucide-react";
 import { ServerSelector } from "./ServerSelector";
 import { DownloadBox } from "./DownloadBox";
@@ -28,6 +33,7 @@ interface VideoPlayerProps {
 }
 
 export function VideoPlayer({ streamData, episodeId }: VideoPlayerProps) {
+  const router = useRouter();
   const { saveWatchHistory } = useAuth();
   const [currentStreamUrl, setCurrentStreamUrl] = useState<string>(
     streamData.defaultStreamingUrl || ""
@@ -38,6 +44,11 @@ export function VideoPlayer({ streamData, episodeId }: VideoPlayerProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isAdBlockEnabled, setIsAdBlockEnabled] = useState(true);
   const [playerKey, setPlayerKey] = useState(0);
+
+  // Auto-Next State
+  const [isAutoNextActive, setIsAutoNextActive] = useState(false);
+  const [countdown, setCountdown] = useState(5);
+  const [showSkipNotification, setShowSkipNotification] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -97,6 +108,21 @@ export function VideoPlayer({ streamData, episodeId }: VideoPlayerProps) {
     autoPickServer();
   }, [episodeId, streamData]);
 
+  // Handle Auto-Next Countdown Timer
+  useEffect(() => {
+    let timer: any;
+    if (isAutoNextActive && countdown > 0) {
+      timer = setTimeout(() => setCountdown((prev) => prev - 1), 1000);
+    } else if (isAutoNextActive && countdown === 0) {
+      if (streamData.hasNextEpisode && streamData.nextEpisode) {
+        const nextId = cleanSlug(streamData.nextEpisode.episodeId || streamData.nextEpisode.href || "");
+        router.push(`/watch/${nextId}`);
+      }
+      setIsAutoNextActive(false);
+    }
+    return () => clearTimeout(timer);
+  }, [isAutoNextActive, countdown, streamData, router]);
+
   // Track Fullscreen Change Events
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -140,6 +166,21 @@ export function VideoPlayer({ streamData, episodeId }: VideoPlayerProps) {
     setPlayerKey((prev) => prev + 1);
   };
 
+  // Skip Opening (+85 Detik) Handler
+  const handleSkipOpening = () => {
+    setShowSkipNotification(true);
+    setTimeout(() => setShowSkipNotification(false), 3000);
+
+    // Send standard HTML5 video skip postMessage if embed player supports it
+    try {
+      if (iframeRef.current && iframeRef.current.contentWindow) {
+        iframeRef.current.contentWindow.postMessage({ action: "skip", seconds: 85 }, "*");
+      }
+    } catch {
+      // Ignore cross-origin postMessage restrictions
+    }
+  };
+
   // Android & Desktop Optimized Fullscreen with Landscape Auto-Orientation
   const handleToggleFullscreen = async () => {
     const container = containerRef.current;
@@ -180,7 +221,7 @@ export function VideoPlayer({ streamData, episodeId }: VideoPlayerProps) {
     <div className={`flex flex-col gap-3.5 sm:gap-4 ${isTheaterMode ? "max-w-none" : "w-full"}`}>
       {/* 
         Video Player Screen Wrapper
-        - Centered container matching cards width
+        - Clean centered container matching cards width
         - 16:9 Aspect Ratio
       */}
       <div
@@ -197,9 +238,68 @@ export function VideoPlayer({ streamData, episodeId }: VideoPlayerProps) {
           </div>
         )}
 
-        {/* Floating Android Fullscreen Overlay Button */}
+        {/* Skip Opening Notification Banner */}
+        {showSkipNotification && (
+          <div className="absolute top-14 left-1/2 -translate-x-1/2 z-30 px-4 py-2 rounded-xl bg-[#6366f1]/90 backdrop-blur-md text-white text-xs font-semibold shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+            <FastForward className="w-4 h-4 text-yellow-300" />
+            <span>Melompati Opening (+85 Detik)</span>
+          </div>
+        )}
+
+        {/* Auto-Next Countdown Floating Card */}
+        {isAutoNextActive && (
+          <div className="absolute bottom-6 right-6 z-30 p-4 rounded-2xl bg-[#0a0f18]/95 border border-[#38bdf8]/50 shadow-2xl backdrop-blur-md flex flex-col gap-2.5 max-w-[280px] animate-in fade-in slide-in-from-bottom-3">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-[#38bdf8] uppercase tracking-wider flex items-center gap-1">
+                <Sparkles className="w-3 h-3" />
+                Episode Selanjutnya
+              </span>
+              <button
+                onClick={() => setIsAutoNextActive(false)}
+                className="p-1 text-[#94a3b8] hover:text-white rounded-md"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <p className="text-xs text-[#f1f5f9] font-medium line-clamp-1">
+              {streamData.nextEpisode?.title || "Episode Berikutnya"}
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  const nextId = cleanSlug(streamData.nextEpisode?.episodeId || streamData.nextEpisode?.href || "");
+                  router.push(`/watch/${nextId}`);
+                }}
+                className="flex-1 py-1.5 rounded-xl bg-[#6366f1] hover:bg-[#4f46e5] text-white text-xs font-semibold flex items-center justify-center gap-1.5 shadow"
+              >
+                <Play className="w-3 h-3 fill-current" />
+                <span>Nonton ({countdown}s)</span>
+              </button>
+              <button
+                onClick={() => setIsAutoNextActive(false)}
+                className="px-2.5 py-1.5 rounded-xl bg-[#1e293b] text-[#94a3b8] hover:text-white text-xs font-medium"
+              >
+                Batal
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Floating Top Action Controls */}
         {currentStreamUrl && (
           <div className="absolute top-2.5 right-2.5 z-20 flex items-center gap-1.5 pointer-events-auto">
+            {/* Skip Opening Button */}
+            <button
+              onClick={handleSkipOpening}
+              title="Lewati Lagu Opening (+85 Detik)"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-[#0a0f18]/85 hover:bg-[#1e293b] text-[#cbd5e1] hover:text-white backdrop-blur-md text-[11px] font-medium border border-[#384d6b]/60 shadow-lg transition-all active:scale-95"
+            >
+              <FastForward className="w-3.5 h-3.5 text-[#fbbf24]" />
+              <span className="hidden sm:inline">Lewati Opening (+85s)</span>
+              <span className="sm:hidden">+85s</span>
+            </button>
+
+            {/* Fullscreen Button */}
             <button
               onClick={handleToggleFullscreen}
               title="Perbesar Layar Penuh (Rotasi Otomatis)"
@@ -220,10 +320,7 @@ export function VideoPlayer({ streamData, episodeId }: VideoPlayerProps) {
           </div>
         )}
 
-        {/* 
-          Video Embed Iframe with Strict Sandbox Protection against Redirects & Popups
-          - When isAdBlockEnabled is true: sandbox blocks window.open, top.location redirect, and popup ads
-        */}
+        {/* Video Embed Iframe with Strict Sandbox Protection */}
         {currentStreamUrl ? (
           <iframe
             ref={iframeRef}
@@ -256,7 +353,6 @@ export function VideoPlayer({ streamData, episodeId }: VideoPlayerProps) {
 
       {/* Quick Mobile Assistance & AdBlock Security Bar */}
       <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-2xl bg-[#131b2a] border border-[#1e2c40] text-xs text-[#94a3b8]">
-        {/* AdBlock / Anti-Redirect Status Badge & Toggle */}
         <button
           onClick={() => {
             setIsAdBlockEnabled(!isAdBlockEnabled);
@@ -282,10 +378,18 @@ export function VideoPlayer({ streamData, episodeId }: VideoPlayerProps) {
         </button>
 
         <div className="flex items-center gap-2">
-          <div className="hidden sm:flex items-center gap-1 text-[11px] text-[#64748b]">
-            <Smartphone className="w-3.5 h-3.5 text-[#38bdf8]" />
-            <span>Mode Anti-Popup mencegah tab Anda diarahkan ke situs lain saat diklik.</span>
-          </div>
+          {streamData.hasNextEpisode && (
+            <button
+              onClick={() => {
+                setCountdown(5);
+                setIsAutoNextActive(true);
+              }}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#1e293b] hover:bg-[#6366f1] text-[#cbd5e1] hover:text-white text-[11px] font-medium border border-[#273549] transition-colors"
+            >
+              <Sparkles className="w-3 h-3 text-[#38bdf8]" />
+              <span>Auto-Next (5s)</span>
+            </button>
+          )}
 
           {currentStreamUrl && (
             <a

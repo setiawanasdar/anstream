@@ -1,9 +1,10 @@
 import React from "react";
 import Link from "next/link";
-import { Flame, CheckCircle2, Calendar, ArrowRight } from "lucide-react";
+import { Flame, CheckCircle2, Calendar, ArrowRight, Sparkles } from "lucide-react";
 import { sankaApi } from "@/lib/api/sanka";
 import { HeroBanner } from "@/components/home/HeroBanner";
 import { AnimeCard } from "@/components/anime/AnimeCard";
+import { GenrePills } from "@/components/home/GenrePills";
 import type { ScheduleItem, HomeAnimeData } from "@/types/anime";
 
 export const dynamic = "force-dynamic";
@@ -27,11 +28,14 @@ export default async function HomePage() {
   const completedList = homeData?.completed?.animeList || [];
 
   return (
-    <div className="space-y-10 sm:space-y-12">
+    <div className="space-y-8 sm:space-y-12">
       {/* 1. Hero Banner */}
       {ongoingList.length > 0 && <HeroBanner animeList={ongoingList} />}
 
-      {/* 2. Ongoing Anime Section */}
+      {/* 2. Quick Genre Filter Pills */}
+      <GenrePills />
+
+      {/* 3. Ongoing Anime Section */}
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -66,7 +70,7 @@ export default async function HomePage() {
         )}
       </section>
 
-      {/* 3. Completed Anime Section */}
+      {/* 4. Completed Anime Section */}
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -101,7 +105,7 @@ export default async function HomePage() {
         )}
       </section>
 
-      {/* 4. Quick Schedule Preview */}
+      {/* 5. Quick Schedule Preview */}
       {scheduleData.length > 0 && (
         <section className="p-5 md:p-6 rounded-3xl bg-[#131b2a] border border-[#1e2c40] space-y-4">
           <div className="flex items-center justify-between">
