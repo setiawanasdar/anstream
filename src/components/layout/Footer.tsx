@@ -27,6 +27,7 @@ export function Footer() {
               <li><Link href="/" className="hover:text-[#38bdf8] transition-colors">Beranda</Link></li>
               <li><Link href="/ongoing" className="hover:text-[#38bdf8] transition-colors">Anime Ongoing</Link></li>
               <li><Link href="/completed" className="hover:text-[#38bdf8] transition-colors">Anime Tamat</Link></li>
+              <li><Link href="/az-list" className="hover:text-[#38bdf8] transition-colors">Daftar Anime A?Z</Link></li>
               <li><Link href="/schedule" className="hover:text-[#38bdf8] transition-colors">Jadwal Rilis</Link></li>
               <li><Link href="/genres" className="hover:text-[#38bdf8] transition-colors">Daftar Genre</Link></li>
             </ul>

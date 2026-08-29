@@ -18,6 +18,7 @@ export function Navbar() {
     { name: "Tamat", href: "/completed" },
     { name: "Jadwal", href: "/schedule" },
     { name: "Genre", href: "/genres" },
+    { name: "Daftar A-Z", href: "/az-list" },
   ];
 
   return (
@@ -45,7 +46,7 @@ export function Navbar() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`px-3.5 py-1.5 rounded-xl text-sm font-medium transition-all ${
+                  className={`px-3 py-1.5 rounded-xl text-xs lg:text-sm font-medium transition-all ${
                     isActive
                       ? "bg-[#1e293b] text-[#38bdf8] shadow-sm"
                       : "text-[#94a3b8] hover:text-[#f1f5f9] hover:bg-[#131b2a]"

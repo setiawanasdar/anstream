@@ -8,6 +8,7 @@ import {
   OngoingAnimeItem,
   CompletedAnimeItem,
   Pagination,
+  UnlimitedGroupItem,
 } from "@/types/anime";
 
 // Clean and normalize BASE_URL to prevent duplicate /anime or trailing slashes
@@ -223,6 +224,16 @@ export const sankaApi = {
       return res?.data || null;
     } catch {
       return null;
+    }
+  },
+
+  // 11. Unlimited Anime Directory (A-Z list)
+  async getUnlimitedAnime(): Promise<UnlimitedGroupItem[]> {
+    try {
+      const res = await fetchFromApi<{ list: UnlimitedGroupItem[] }>("/anime/unlimited", 3600);
+      return res?.data?.list || [];
+    } catch {
+      return [];
     }
   },
 };

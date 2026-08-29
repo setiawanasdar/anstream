@@ -158,3 +158,15 @@ export interface SearchAnimeItem {
   href?: string;
   genreList?: GenreItem[];
 }
+
+export interface UnlimitedAnimeItem {
+  title: string;
+  animeId: string;
+  href?: string;
+  otakudesuUrl?: string;
+}
+
+export interface UnlimitedGroupItem {
+  startWith: string;
+  animeList: UnlimitedAnimeItem[];
+}
