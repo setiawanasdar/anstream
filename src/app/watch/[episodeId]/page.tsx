@@ -1,9 +1,8 @@
 import React from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft, Calendar, Globe } from "lucide-react";
+import { ChevronLeft, Calendar } from "lucide-react";
 import { sankaApi } from "@/lib/api/sanka";
-import { buildVidSrcStreamData, getVidSrcAnimeDetail } from "@/lib/api/vidsrc";
 import { VideoPlayer } from "@/components/player/VideoPlayer";
 import { EpisodeDrawer } from "@/components/player/EpisodeDrawer";
 import { cleanSlug } from "@/lib/utils";
@@ -18,10 +17,7 @@ export async function generateMetadata({ params }: PageProps) {
   const { episodeId } = await params;
   const cleanEpId = cleanSlug(episodeId);
 
-  const streamData = cleanEpId.startsWith("vidsrc-")
-    ? buildVidSrcStreamData(cleanEpId)
-    : await sankaApi.getEpisodeStream(cleanEpId);
-
+  const streamData = await sankaApi.getEpisodeStream(cleanEpId);
   if (!streamData) return { title: "Nonton Anime Episode" };
 
   return {
@@ -34,21 +30,14 @@ export default async function WatchPage({ params }: PageProps) {
   const { episodeId } = await params;
   const cleanEpId = cleanSlug(episodeId);
 
-  const isVidSrcStream = cleanEpId.startsWith("vidsrc-");
-
-  const streamData = isVidSrcStream
-    ? buildVidSrcStreamData(cleanEpId)
-    : await sankaApi.getEpisodeStream(cleanEpId);
-
+  const streamData = await sankaApi.getEpisodeStream(cleanEpId);
   if (!streamData) {
     notFound();
   }
 
   let animeDetail = null;
   if (streamData.animeId) {
-    animeDetail = streamData.animeId.startsWith("vidsrc-")
-      ? getVidSrcAnimeDetail(streamData.animeId)
-      : await sankaApi.getAnimeDetail(cleanSlug(streamData.animeId));
+    animeDetail = await sankaApi.getAnimeDetail(cleanSlug(streamData.animeId));
   }
 
   const episodes = animeDetail?.episodeList || [];
@@ -64,17 +53,12 @@ export default async function WatchPage({ params }: PageProps) {
           <span>Kembali ke Detail Anime</span>
         </Link>
 
-        {isVidSrcStream ? (
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#6366f1]/20 text-[#38bdf8] border border-[#6366f1]/30 font-semibold">
-            <Globe className="w-3.5 h-3.5" />
-            <span>VidSrc 1080p Ultra HD</span>
-          </div>
-        ) : streamData.releaseTime ? (
+        {streamData.releaseTime && (
           <div className="flex items-center gap-1 text-[#94a3b8]">
             <Calendar className="w-3.5 h-3.5" />
             <span>Diperbarui: {streamData.releaseTime}</span>
           </div>
-        ) : null}
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">

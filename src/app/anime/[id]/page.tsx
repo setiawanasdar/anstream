@@ -13,10 +13,8 @@ import {
   AlertCircle,
   Search,
   ArrowLeft,
-  Globe,
 } from "lucide-react";
 import { sankaApi } from "@/lib/api/sanka";
-import { getVidSrcAnimeDetail, searchVidSrcCatalog } from "@/lib/api/vidsrc";
 import { BookmarkButton } from "@/components/anime/BookmarkButton";
 import { AnimeCard } from "@/components/anime/AnimeCard";
 import { getCleanSynopsis, cleanSlug } from "@/lib/utils";
@@ -29,12 +27,11 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps) {
   const { id } = await params;
-  let anime = id.startsWith("vidsrc-")
-    ? getVidSrcAnimeDetail(id)
-    : await sankaApi.getAnimeDetail(id);
+  const cleanId = cleanSlug(id);
+  const anime = await sankaApi.getAnimeDetail(cleanId);
 
   if (!anime) {
-    const formattedTitle = id
+    const formattedTitle = cleanId
       .replace(/-sub-indo|-subtitle-indonesia/g, "")
       .replace(/-/g, " ");
     return { title: `Anime ${formattedTitle} | NontonAnime` };
@@ -50,28 +47,9 @@ export default async function AnimeDetailPage({ params }: PageProps) {
   const { id } = await params;
   const cleanId = cleanSlug(id);
 
-  // 1. Check if ID is from VidSrc / TMDB
-  let anime = cleanId.startsWith("vidsrc-")
-    ? getVidSrcAnimeDetail(cleanId)
-    : await sankaApi.getAnimeDetail(cleanId);
+  const anime = await sankaApi.getAnimeDetail(cleanId);
 
-  // 2. If null from Sankavollerei, check if available in VidSrc catalog
-  if (!anime) {
-    const cleanQuery = cleanId
-      .replace(/-sub-indo|-subtitle-indonesia/g, "")
-      .replace(/-/g, " ")
-      .trim();
-
-    const vidsrcMatches = searchVidSrcCatalog(cleanQuery);
-    if (vidsrcMatches.length > 0) {
-      const matchDetail = getVidSrcAnimeDetail(vidsrcMatches[0].animeId);
-      if (matchDetail) {
-        anime = matchDetail;
-      }
-    }
-  }
-
-  // 3. If still null, show friendly smart recovery
+  // If anime detail returns null from upstream API (older Otakudesu archive / batch layout)
   if (!anime) {
     const cleanQuery = cleanId
       .replace(/-sub-indo|-subtitle-indonesia/g, "")
@@ -101,7 +79,7 @@ export default async function AnimeDetailPage({ params }: PageProps) {
                 {cleanQuery}
               </h1>
               <p className="text-xs sm:text-sm text-[#94a3b8] leading-relaxed pt-1">
-                Data episode tunggal untuk judul anime lama ini sedang dalam proses pembaruan oleh server pusat upstream.
+                Data episode tunggal untuk judul anime lama ini sedang dalam proses pembaruan oleh server pusat upstream (biasanya berupa rilis batch BD).
               </p>
             </div>
           </div>
@@ -167,8 +145,6 @@ export default async function AnimeDetailPage({ params }: PageProps) {
   const latestEpisode = anime.episodeList && anime.episodeList.length > 0
     ? anime.episodeList[0]
     : null;
-
-  const isVidSrcDetail = cleanId.startsWith("vidsrc-") || anime.type?.includes("VidSrc");
 
   return (
     <div className="space-y-8 pb-10">
@@ -240,12 +216,6 @@ export default async function AnimeDetailPage({ params }: PageProps) {
                   <span>{anime.duration}</span>
                 </div>
               )}
-              {isVidSrcDetail && (
-                <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#6366f1]/20 text-[#38bdf8] border border-[#6366f1]/40 text-xs font-bold">
-                  <Globe className="w-3.5 h-3.5" />
-                  <span>VidSrc 1080p Ultra HD</span>
-                </div>
-              )}
             </div>
 
             {anime.genreList && anime.genreList.length > 0 && (
@@ -272,7 +242,7 @@ export default async function AnimeDetailPage({ params }: PageProps) {
                   className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-[#6366f1] hover:bg-[#4f46e5] text-white font-semibold text-sm shadow-lg shadow-[#6366f1]/30 transition-all hover:scale-105"
                 >
                   <Play className="w-4 h-4 fill-current" />
-                  <span>Tonton Episode 1</span>
+                  <span>Tonton Episode Terbaru</span>
                 </Link>
               )}
 
@@ -324,9 +294,7 @@ export default async function AnimeDetailPage({ params }: PageProps) {
             <ListOrdered className="w-5 h-5 text-[#6366f1]" />
             <span>Semua Episode ({anime.episodeList?.length || 0})</span>
           </h2>
-          <span className="text-xs text-[#94a3b8]">
-            {isVidSrcDetail ? "VidSrc 1080p Ultra HD" : "Subtitle Indonesia HD"}
-          </span>
+          <span className="text-xs text-[#94a3b8]">Subtitle Indonesia HD</span>
         </div>
 
         {anime.episodeList && anime.episodeList.length > 0 ? (
