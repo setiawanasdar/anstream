@@ -23,12 +23,14 @@ import {
   Tv,
   Layers,
   ArrowRight,
+  Globe,
 } from "lucide-react";
 import { UnifiedCustomPlayer } from "./UnifiedCustomPlayer";
 import { ServerSelector } from "./ServerSelector";
 import { DownloadBox } from "./DownloadBox";
 import { useAuth } from "@/lib/supabase/provider";
 import { cleanSlug, extractEpisodeNumber } from "@/lib/utils";
+import { buildVidSrcTvUrl } from "@/lib/api/vidsrc";
 import type { EpisodeStreamData, ServerItem } from "@/types/anime";
 
 interface VideoPlayerProps {
@@ -50,6 +52,7 @@ export function VideoPlayer({ streamData, episodeId }: VideoPlayerProps) {
 
   const [playerMode, setPlayerMode] = useState<"custom" | "embed">("custom");
   const [selectedServer, setSelectedServer] = useState<ServerItem | null>(null);
+  const [vidsrcUrl, setVidsrcUrl] = useState<string | null>(null);
   const [isLoadingServer, setIsLoadingServer] = useState(false);
   const [isTheaterMode, setIsTheaterMode] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -71,6 +74,8 @@ export function VideoPlayer({ streamData, episodeId }: VideoPlayerProps) {
     (selectedServer?.title.toLowerCase().includes("otakuplay") ?? false) ||
     (selectedServer?.title.toLowerCase().includes("odstream") ?? false);
 
+  const isVidSrcActive = currentStreamUrl.includes("vsembed.ru");
+
   // Auto save watch history on load
   useEffect(() => {
     if (streamData) {
@@ -85,10 +90,54 @@ export function VideoPlayer({ streamData, episodeId }: VideoPlayerProps) {
     }
   }, [episodeId, streamData]);
 
+  // Lookup TMDB ID for VidSrc 1080p server
+  useEffect(() => {
+    async function resolveTmdb() {
+      try {
+        const titleQuery = streamData.title.split("Episode")[0]?.trim() || streamData.animeId;
+        const res = await fetch(`/api/anime/tmdb-search?title=${encodeURIComponent(titleQuery)}`);
+        const json = await res.json();
+        if (json.status === "success" && json.data?.tmdbId) {
+          const epNum = extractEpisodeNumber(streamData.title);
+          const generatedUrl = buildVidSrcTvUrl(json.data.tmdbId, 1, epNum, {
+            ds_lang: "id,en",
+            autonext: true,
+          });
+          setVidsrcUrl(generatedUrl);
+        }
+      } catch (e) {
+        console.warn("VidSrc TMDB resolve error:", e);
+      }
+    }
+
+    resolveTmdb();
+  }, [streamData.title, streamData.animeId]);
+
+  // Listen to VidSrc postMessage events (PLAYER_EVENT) for auto-progress & auto-next
+  useEffect(() => {
+    const handlePlayerMessage = (event: MessageEvent) => {
+      if (event.data && event.data.type === "PLAYER_EVENT") {
+        const { player_status, player_progress } = event.data.data || {};
+        if (player_status === "completed") {
+          handleNextEpisodeNavigation();
+        }
+      }
+    };
+
+    window.addEventListener("message", handlePlayerMessage);
+    return () => window.removeEventListener("message", handlePlayerMessage);
+  }, [streamData]);
+
   // Resolve Direct Stream whenever currentStreamUrl changes
   useEffect(() => {
     async function resolveDirectStream() {
-      if (!currentStreamUrl) return;
+      if (!currentStreamUrl || currentStreamUrl.includes("vsembed.ru")) {
+        if (currentStreamUrl.includes("vsembed.ru")) {
+          setDirectStreamData(null);
+          setPlayerMode("embed");
+        }
+        return;
+      }
       try {
         const res = await fetch("/api/anime/stream-resolve", {
           method: "POST",
@@ -104,7 +153,6 @@ export function VideoPlayer({ streamData, episodeId }: VideoPlayerProps) {
           setPlayerMode("custom");
         } else {
           setDirectStreamData(null);
-          // If cannot extract direct stream, gracefully use embed
           setPlayerMode("embed");
         }
       } catch (err) {
@@ -196,6 +244,15 @@ export function VideoPlayer({ streamData, episodeId }: VideoPlayerProps) {
     }
   };
 
+  // Select VidSrc Server
+  const handleSelectVidSrc = () => {
+    if (!vidsrcUrl) return;
+    setSelectedServer({ title: "VidSrc 1080p", serverId: "vidsrc-1080p" });
+    setCurrentStreamUrl(vidsrcUrl);
+    setPlayerMode("embed");
+    setPlayerKey((prev) => prev + 1);
+  };
+
   // 1-Click Auto Switch to a working server (Filedon or Vidhide)
   const handleAutoSwitchToWorkingServer = () => {
     if (!streamData.server?.qualities) return;
@@ -240,7 +297,7 @@ export function VideoPlayer({ streamData, episodeId }: VideoPlayerProps) {
           hasNextEpisode={streamData.hasNextEpisode}
         />
       ) : (
-        /* 2. Embed Iframe Mode (Clean Sandboxed Fallback) */
+        /* 2. Embed Iframe Mode (Clean Sandboxed Fallback & VidSrc) */
         <div
           ref={containerRef}
           className={`relative w-full aspect-video min-h-[210px] sm:min-h-[320px] md:min-h-[420px] bg-[#05080f] rounded-2xl md:rounded-3xl overflow-hidden border border-[#1e2c40] shadow-2xl transition-all ${
@@ -300,7 +357,7 @@ export function VideoPlayer({ streamData, episodeId }: VideoPlayerProps) {
               className="absolute inset-0 w-full h-full border-0"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
               sandbox={
-                !isVidhide && isAdBlockEnabled
+                !isVidhide && !isVidSrcActive && isAdBlockEnabled
                   ? "allow-scripts allow-same-origin allow-presentation allow-forms"
                   : undefined
               }
@@ -322,19 +379,26 @@ export function VideoPlayer({ streamData, episodeId }: VideoPlayerProps) {
       <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-2xl bg-[#131b2a] border border-[#1e2c40] text-xs text-[#94a3b8]">
         {/* Toggle Mode: Custom Player vs Embed Mode */}
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setPlayerMode(playerMode === "custom" ? "embed" : "custom")}
-            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-[11px] font-bold border transition-all ${
-              playerMode === "custom"
-                ? "bg-[#6366f1]/20 text-[#38bdf8] border-[#6366f1]/40 shadow-sm"
-                : "bg-[#1e293b] text-[#cbd5e1] border-[#273549]"
-            }`}
-          >
-            <Tv className="w-3.5 h-3.5 text-[#38bdf8]" />
-            <span>Format: {playerMode === "custom" ? "Custom Player (Seragam)" : "Mode Embed Alternatif"}</span>
-          </button>
+          {isVidSrcActive ? (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-[11px] font-bold bg-gradient-to-r from-[#6366f1]/20 to-[#38bdf8]/20 text-[#38bdf8] border border-[#6366f1]/40">
+              <Globe className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Server: VidSrc 1080p Ultra HD (Multi-Sub)</span>
+            </span>
+          ) : (
+            <button
+              onClick={() => setPlayerMode(playerMode === "custom" ? "embed" : "custom")}
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-[11px] font-bold border transition-all ${
+                playerMode === "custom"
+                  ? "bg-[#6366f1]/20 text-[#38bdf8] border-[#6366f1]/40 shadow-sm"
+                  : "bg-[#1e293b] text-[#cbd5e1] border-[#273549]"
+              }`}
+            >
+              <Tv className="w-3.5 h-3.5 text-[#38bdf8]" />
+              <span>Format: {playerMode === "custom" ? "Custom Player (Seragam)" : "Mode Embed Alternatif"}</span>
+            </button>
+          )}
 
-          {playerMode === "embed" && !isDesuStreamBlocked && (
+          {playerMode === "embed" && !isDesuStreamBlocked && !isVidSrcActive && (
             <button
               onClick={() => {
                 setIsAdBlockEnabled(!isAdBlockEnabled);
@@ -446,12 +510,14 @@ export function VideoPlayer({ streamData, episodeId }: VideoPlayerProps) {
         </div>
       </div>
 
-      {/* Server & Quality Selection Panel */}
+      {/* Server & Quality Selection Panel with VidSrc */}
       <ServerSelector
         qualities={streamData.server?.qualities}
         selectedServer={selectedServer}
         onSelectServer={handleSelectServer}
         isLoading={isLoadingServer}
+        vidsrcUrl={vidsrcUrl}
+        onSelectVidSrc={handleSelectVidSrc}
       />
 
       {/* Download Options Panel */}
