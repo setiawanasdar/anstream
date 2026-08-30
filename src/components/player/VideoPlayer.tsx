@@ -53,6 +53,11 @@ export function VideoPlayer({ streamData, episodeId }: VideoPlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
+  // Detect if current provider is Vidhide (which rejects the HTML5 sandbox attribute)
+  const isVidhide =
+    currentStreamUrl.toLowerCase().includes("vidhide") ||
+    currentStreamUrl.toLowerCase().includes("odvidhide");
+
   // Auto save watch history on load
   useEffect(() => {
     if (streamData) {
@@ -171,13 +176,12 @@ export function VideoPlayer({ streamData, episodeId }: VideoPlayerProps) {
     setShowSkipNotification(true);
     setTimeout(() => setShowSkipNotification(false), 3000);
 
-    // Send standard HTML5 video skip postMessage if embed player supports it
     try {
       if (iframeRef.current && iframeRef.current.contentWindow) {
         iframeRef.current.contentWindow.postMessage({ action: "skip", seconds: 85 }, "*");
       }
     } catch {
-      // Ignore cross-origin postMessage restrictions
+      // Ignore
     }
   };
 
@@ -202,7 +206,7 @@ export function VideoPlayer({ streamData, episodeId }: VideoPlayerProps) {
           try {
             await (screen.orientation as any).lock("landscape");
           } catch {
-            // Ignore if permission not granted
+            // Ignore
           }
         }
       } catch (err) {
@@ -320,7 +324,10 @@ export function VideoPlayer({ streamData, episodeId }: VideoPlayerProps) {
           </div>
         )}
 
-        {/* Video Embed Iframe with Strict Sandbox Protection */}
+        {/* 
+          Video Embed Iframe
+          - Smart Sandbox: Applied to Filedon and others, omitted for Vidhide to prevent "sandboxed iframe" error
+        */}
         {currentStreamUrl ? (
           <iframe
             ref={iframeRef}
@@ -331,7 +338,7 @@ export function VideoPlayer({ streamData, episodeId }: VideoPlayerProps) {
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
             allowFullScreen={true}
             sandbox={
-              isAdBlockEnabled
+              !isVidhide && isAdBlockEnabled
                 ? "allow-scripts allow-same-origin allow-presentation allow-fullscreen allow-forms"
                 : undefined
             }
@@ -359,12 +366,19 @@ export function VideoPlayer({ streamData, episodeId }: VideoPlayerProps) {
             setPlayerKey((k) => k + 1);
           }}
           className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-semibold border transition-all ${
-            isAdBlockEnabled
+            isVidhide
+              ? "bg-blue-500/15 text-blue-300 border-blue-500/30"
+              : isAdBlockEnabled
               ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/25"
               : "bg-amber-500/15 text-amber-300 border-amber-500/30 hover:bg-amber-500/25"
           }`}
         >
-          {isAdBlockEnabled ? (
+          {isVidhide ? (
+            <>
+              <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
+              <span>Mode Kompatibilitas Vidhide Aktif</span>
+            </>
+          ) : isAdBlockEnabled ? (
             <>
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
               <span>Anti-Popup & Iklan: AKTIF</span>
