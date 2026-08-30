@@ -22,6 +22,7 @@ import {
   Sparkles,
   Tv,
   Layers,
+  ArrowRight,
 } from "lucide-react";
 import { UnifiedCustomPlayer } from "./UnifiedCustomPlayer";
 import { ServerSelector } from "./ServerSelector";
@@ -61,6 +62,14 @@ export function VideoPlayer({ streamData, episodeId }: VideoPlayerProps) {
   const isVidhide =
     currentStreamUrl.toLowerCase().includes("vidhide") ||
     currentStreamUrl.toLowerCase().includes("odvidhide");
+
+  const isDesuStreamBlocked =
+    currentStreamUrl.includes("desustream.me") ||
+    currentStreamUrl.includes("desustream.net") ||
+    currentStreamUrl.includes("desustream.info") ||
+    currentStreamUrl.includes("desustream.com") ||
+    (selectedServer?.title.toLowerCase().includes("otakuplay") ?? false) ||
+    (selectedServer?.title.toLowerCase().includes("odstream") ?? false);
 
   // Auto save watch history on load
   useEffect(() => {
@@ -107,7 +116,7 @@ export function VideoPlayer({ streamData, episodeId }: VideoPlayerProps) {
     resolveDirectStream();
   }, [currentStreamUrl, streamData.downloadUrl]);
 
-  // Smart Auto-Select Server on mount to bypass CSP frame-ancestors block on default stream
+  // Smart Auto-Select Server on mount (Always pick Filedon / Vidhide / Mega instead of Desustream)
   useEffect(() => {
     async function autoPickServer() {
       if (!streamData.server?.qualities || streamData.server.qualities.length === 0) return;
@@ -187,6 +196,24 @@ export function VideoPlayer({ streamData, episodeId }: VideoPlayerProps) {
     }
   };
 
+  // 1-Click Auto Switch to a working server (Filedon or Vidhide)
+  const handleAutoSwitchToWorkingServer = () => {
+    if (!streamData.server?.qualities) return;
+    for (const q of streamData.server.qualities) {
+      const srv = q.serverList.find(
+        (s) =>
+          s.title.toLowerCase().includes("filedon") ||
+          s.title.toLowerCase().includes("vidhide") ||
+          s.title.toLowerCase().includes("mega") ||
+          s.title.toLowerCase().includes("ondesuhd")
+      );
+      if (srv) {
+        handleSelectServer(srv, q.title);
+        return;
+      }
+    }
+  };
+
   const handleReloadPlayer = () => {
     setPlayerKey((prev) => prev + 1);
   };
@@ -227,7 +254,44 @@ export function VideoPlayer({ streamData, episodeId }: VideoPlayerProps) {
             </div>
           )}
 
-          {currentStreamUrl ? (
+          {isDesuStreamBlocked ? (
+            /* Friendly In-Player Alert for Desustream / Otakuplay SAMEORIGIN Block */
+            <div className="flex flex-col items-center justify-center h-full text-center p-6 text-[#94a3b8] space-y-3 bg-[#0d1422]/90 backdrop-blur-md">
+              <div className="p-3 rounded-2xl bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                <ShieldAlert className="w-8 h-8" />
+              </div>
+              <div className="space-y-1 max-w-md">
+                <h3 className="text-sm sm:text-base font-bold text-[#f1f5f9]">
+                  Server Otakuplay Membatasi Akses Embed
+                </h3>
+                <p className="text-xs text-[#94a3b8] leading-relaxed">
+                  Server Otakuplay (Desustream) menerapkan proteksi keamanan yang menolak pemutaran di dalam website lain. Silakan beralih ke server rekomendasi <strong>Filedon</strong> atau <strong>Vidhide</strong> di bawah.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+                <button
+                  onClick={handleAutoSwitchToWorkingServer}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#6366f1] hover:bg-[#4f46e5] text-white text-xs font-bold shadow-lg shadow-[#6366f1]/30 transition-all"
+                >
+                  <span>Ganti ke Server Filedon / Vidhide (HD)</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+
+                {currentStreamUrl && (
+                  <a
+                    href={currentStreamUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 px-3.5 py-2 rounded-xl bg-[#1e293b] hover:bg-[#273549] text-[#cbd5e1] text-xs font-medium border border-[#273549] transition-colors"
+                  >
+                    <span>Tonton di Tab Baru</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                )}
+              </div>
+            </div>
+          ) : currentStreamUrl ? (
             <iframe
               ref={iframeRef}
               key={playerKey}
@@ -270,7 +334,7 @@ export function VideoPlayer({ streamData, episodeId }: VideoPlayerProps) {
             <span>Format: {playerMode === "custom" ? "Custom Player (Seragam)" : "Mode Embed Alternatif"}</span>
           </button>
 
-          {playerMode === "embed" && (
+          {playerMode === "embed" && !isDesuStreamBlocked && (
             <button
               onClick={() => {
                 setIsAdBlockEnabled(!isAdBlockEnabled);
