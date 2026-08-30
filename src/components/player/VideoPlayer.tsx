@@ -238,7 +238,7 @@ export function VideoPlayer({ streamData, episodeId }: VideoPlayerProps) {
               allowFullScreen={true}
               sandbox={
                 !isVidhide && isAdBlockEnabled
-                  ? "allow-scripts allow-same-origin allow-presentation allow-fullscreen allow-forms"
+                  ? "allow-scripts allow-same-origin allow-presentation allow-forms"
                   : undefined
               }
               // @ts-ignore
