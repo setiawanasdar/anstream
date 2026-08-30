@@ -235,15 +235,11 @@ export function VideoPlayer({ streamData, episodeId }: VideoPlayerProps) {
               title={streamData.title}
               className="absolute inset-0 w-full h-full border-0"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
-              allowFullScreen={true}
               sandbox={
                 !isVidhide && isAdBlockEnabled
                   ? "allow-scripts allow-same-origin allow-presentation allow-forms"
                   : undefined
               }
-              // @ts-ignore
-              webkitallowfullscreen="true"
-              mozallowfullscreen="true"
               scrolling="no"
             />
           ) : (
