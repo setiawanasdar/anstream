@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Navbar } from "@/components/layout/Navbar";
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { Footer } from "@/components/layout/Footer";
+import { GlobalAnnouncement } from "@/components/layout/GlobalAnnouncement";
 import { PWAInstallBanner } from "@/components/ui/PWAInstallBanner";
 import { SupabaseProvider } from "@/lib/supabase/provider";
 import "./globals.css";
@@ -41,6 +42,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen bg-[#0a0f18] text-[#f1f5f9] flex flex-col antialiased selection:bg-[#6366f1]/30 selection:text-[#38bdf8]">
         <SupabaseProvider>
+          <GlobalAnnouncement />
           <Navbar />
           <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
             {children}

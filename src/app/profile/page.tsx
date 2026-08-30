@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { User, Bookmark, History, LogOut, Shield, Heart } from "lucide-react";
+import { User, Bookmark, History, LogOut, Shield, ShieldCheck, LayoutDashboard } from "lucide-react";
 import { useAuth } from "@/lib/supabase/provider";
 
 export default function ProfilePage() {
@@ -15,6 +15,8 @@ export default function ProfilePage() {
     router.push("/");
     router.refresh();
   };
+
+  const isAdmin = profile?.role === "admin";
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 pb-12">
@@ -36,6 +38,13 @@ export default function ProfilePage() {
               <Shield className="w-3 h-3" />
               {user ? "Akun Terverifikasi" : "Mode Tamu (Lokal)"}
             </span>
+
+            {isAdmin && (
+              <span className="px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40 text-[11px] font-bold uppercase tracking-wider flex items-center gap-1">
+                <ShieldCheck className="w-3 h-3" />
+                Administrator
+              </span>
+            )}
           </div>
         </div>
 
@@ -49,6 +58,32 @@ export default function ProfilePage() {
           </button>
         )}
       </div>
+
+      {/* Admin Quick Action Card (Only visible on Desktop when role is admin) */}
+      {isAdmin && (
+        <Link
+          href="/admin"
+          className="hidden md:flex items-center justify-between p-5 rounded-3xl bg-gradient-to-r from-[#6366f1]/20 via-[#131b2a] to-[#38bdf8]/10 border border-[#6366f1]/40 shadow-xl group hover:border-[#6366f1] transition-all"
+        >
+          <div className="flex items-center gap-3.5">
+            <div className="p-3 rounded-2xl bg-[#6366f1] text-white shadow-md shadow-[#6366f1]/30 group-hover:scale-105 transition-transform">
+              <LayoutDashboard className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="font-bold text-sm text-[#f1f5f9] group-hover:text-[#38bdf8] transition-colors">
+                Buka Panel Administrator
+              </h3>
+              <p className="text-xs text-[#94a3b8]">
+                Kelola pengguna, pengumuman situs, dan monitor kesehatan API (Desktop Only)
+              </p>
+            </div>
+          </div>
+
+          <span className="px-3.5 py-1.5 rounded-xl bg-[#6366f1] text-white text-xs font-bold shadow group-hover:bg-[#4f46e5] transition-colors">
+            Masuk &rarr;
+          </span>
+        </Link>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 gap-4">
