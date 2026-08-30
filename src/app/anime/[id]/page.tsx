@@ -1,7 +1,6 @@
 import React from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import {
   Star,
   Play,
@@ -11,6 +10,9 @@ import {
   Sparkles,
   ChevronRight,
   ListOrdered,
+  AlertCircle,
+  Search,
+  ArrowLeft,
 } from "lucide-react";
 import { sankaApi } from "@/lib/api/sanka";
 import { BookmarkButton } from "@/components/anime/BookmarkButton";
@@ -26,7 +28,12 @@ interface PageProps {
 export async function generateMetadata({ params }: PageProps) {
   const { id } = await params;
   const anime = await sankaApi.getAnimeDetail(id);
-  if (!anime) return { title: "Anime Detail" };
+  if (!anime) {
+    const formattedTitle = id
+      .replace(/-sub-indo|-subtitle-indonesia/g, "")
+      .replace(/-/g, " ");
+    return { title: `Anime ${formattedTitle} | NontonAnime` };
+  }
 
   return {
     title: `Nonton ${anime.title} Subtitle Indonesia`,
@@ -36,10 +43,100 @@ export async function generateMetadata({ params }: PageProps) {
 
 export default async function AnimeDetailPage({ params }: PageProps) {
   const { id } = await params;
-  const anime = await sankaApi.getAnimeDetail(id);
+  const cleanId = cleanSlug(id);
+  let anime = await sankaApi.getAnimeDetail(cleanId);
 
+  // If anime detail returns null from upstream API (older Otakudesu archive / batch layout)
   if (!anime) {
-    notFound();
+    // Generate clean search keyword from slug
+    const cleanQuery = cleanId
+      .replace(/-sub-indo|-subtitle-indonesia/g, "")
+      .replace(/-/g, " ")
+      .trim();
+
+    const [searchResults, homeData] = await Promise.all([
+      sankaApi.searchAnime(cleanQuery).catch(() => []),
+      sankaApi.getHome().catch(() => null),
+    ]);
+
+    const recommendedList = homeData?.ongoing?.animeList || [];
+
+    return (
+      <div className="space-y-8 pb-12">
+        {/* Friendly Archive Notice Box */}
+        <div className="rounded-3xl bg-[#131b2a] border border-[#1e2c40] p-6 sm:p-8 space-y-4 shadow-xl">
+          <div className="flex items-start gap-4">
+            <div className="p-3 rounded-2xl bg-amber-500/15 text-amber-400 border border-amber-500/30 shrink-0">
+              <AlertCircle className="w-6 h-6" />
+            </div>
+            <div className="space-y-1 flex-1">
+              <span className="px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20 text-[10px] font-bold uppercase tracking-wider">
+                Arsip Anime Klasik / Batch
+              </span>
+              <h1 className="text-xl sm:text-2xl font-bold text-[#f1f5f9] capitalize">
+                {cleanQuery}
+              </h1>
+              <p className="text-xs sm:text-sm text-[#94a3b8] leading-relaxed pt-1">
+                Data episode tunggal untuk judul anime lama ini belum terindeks per episode oleh server pusat upstream (biasanya berupa rilis arsip batch BD).
+              </p>
+            </div>
+          </div>
+
+          <div className="pt-2 flex flex-wrap items-center gap-3">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#1e293b] hover:bg-[#273549] text-xs font-semibold text-[#cbd5e1] hover:text-white transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Kembali ke Beranda</span>
+            </Link>
+
+            <Link
+              href={`/search?q=${encodeURIComponent(cleanQuery)}`}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#6366f1] hover:bg-[#4f46e5] text-white text-xs font-semibold shadow-md shadow-[#6366f1]/25 transition-all"
+            >
+              <Search className="w-4 h-4" />
+              <span>Cari Versi Lain &quot;{cleanQuery}&quot;</span>
+            </Link>
+          </div>
+        </div>
+
+        {/* Alternative / Related Matches */}
+        {searchResults.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-[#38bdf8]" />
+              <h2 className="text-base sm:text-lg font-bold text-[#f1f5f9]">
+                Versi Terkait yang Ditemukan ({searchResults.length})
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4">
+              {searchResults.slice(0, 6).map((item) => (
+                <AnimeCard key={item.animeId} anime={item} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Recommendations */}
+        {recommendedList.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Film className="w-4 h-4 text-[#38bdf8]" />
+              <h2 className="text-base sm:text-lg font-bold text-[#f1f5f9]">
+                Rekomendasi Anime Populer Lainnya
+              </h2>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4">
+              {recommendedList.slice(0, 6).map((rec, idx) => (
+                <AnimeCard key={rec.animeId || idx} anime={rec} />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
   }
 
   const synopsisText = getCleanSynopsis(anime.synopsis);
