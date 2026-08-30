@@ -230,22 +230,28 @@ export const GLOBAL_ANIME_CATALOG: GlobalAnimeEntry[] = [
   }
 ];
 
+const normalizeStr = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+
 export function searchVidSrcCatalog(query: string): SearchAnimeItem[] {
   if (!query || query.trim().length === 0) return [];
-  const q = query.toLowerCase().trim();
+  const qNorm = normalizeStr(query);
 
-  return GLOBAL_ANIME_CATALOG.filter(
-    (item) =>
-      item.title.toLowerCase().includes(q) ||
-      (item.japanese && item.japanese.includes(q)) ||
-      item.genres.some((g) => g.toLowerCase().includes(q))
-  ).map((item) => ({
+  return GLOBAL_ANIME_CATALOG.filter((item) => {
+    const titleNorm = normalizeStr(item.title);
+    const jpNorm = item.japanese ? normalizeStr(item.japanese) : "";
+    return (
+      titleNorm.includes(qNorm) ||
+      qNorm.includes(titleNorm) ||
+      (jpNorm && (jpNorm.includes(qNorm) || qNorm.includes(jpNorm))) ||
+      item.genres.some((g) => normalizeStr(g).includes(qNorm))
+    );
+  }).map((item) => ({
     animeId: `vidsrc-${item.tmdbId}`,
     title: `${item.title} [1080p Ultra HD]`,
     poster: item.poster,
     score: item.score,
     status: item.status,
-    href: `/anime/vidsrc-${item.tmdbId}`,
+    href: `vidsrc-${item.tmdbId}`,
     genreList: item.genres.map((g) => ({
       title: g,
       genreId: g.toLowerCase().replace(/\s+/g, "-"),
@@ -256,12 +262,15 @@ export function searchVidSrcCatalog(query: string): SearchAnimeItem[] {
 
 export function getVidSrcAnimeDetail(animeId: string): AnimeDetail | null {
   const cleanId = animeId.replace(/^vidsrc-/, "");
-  const entry = GLOBAL_ANIME_CATALOG.find((item) => item.tmdbId === cleanId);
+  const normId = normalizeStr(cleanId);
+
+  const entry = GLOBAL_ANIME_CATALOG.find(
+    (item) => item.tmdbId === cleanId || normalizeStr(item.title) === normId || normalizeStr(item.title).includes(normId)
+  );
 
   if (!entry) {
-    // If dynamic tmdb ID not in pre-catalog, construct minimal detail
     return {
-      title: `Anime TMDB #${cleanId}`,
+      title: `Anime #${cleanId}`,
       poster: "https://placehold.co/300x400/131b2a/94a3b8?text=VidSrc+1080p",
       score: "8.0",
       status: "Completed",

@@ -11,6 +11,12 @@ export function cleanSlug(idOrSlug: string): string {
     .replace(/^\/anime\/anime\//, "")
     .replace(/^\/anime\/episode\//, "")
     .replace(/^\/anime\/server\//, "")
+    .replace(/^\/anime\//, "")
+    .replace(/^\/watch\//, "")
+    .replace(/^\/episode\//, "")
+    .replace(/^\/server\//, "")
+    .replace(/^anime\//, "")
+    .replace(/^watch\//, "")
     .replace(/^\//, "");
 }
 
