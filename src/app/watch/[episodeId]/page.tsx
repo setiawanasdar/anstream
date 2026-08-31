@@ -1,8 +1,9 @@
 import React from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft, Calendar } from "lucide-react";
+import { ChevronLeft, Calendar, Clapperboard } from "lucide-react";
 import { sankaApi } from "@/lib/api/sanka";
+import { movieboxApi } from "@/lib/api/moviebox";
 import { VideoPlayer } from "@/components/player/VideoPlayer";
 import { EpisodeDrawer } from "@/components/player/EpisodeDrawer";
 import { cleanSlug } from "@/lib/utils";
@@ -17,7 +18,10 @@ export async function generateMetadata({ params }: PageProps) {
   const { episodeId } = await params;
   const cleanEpId = cleanSlug(episodeId);
 
-  const streamData = await sankaApi.getEpisodeStream(cleanEpId);
+  const streamData = cleanEpId.startsWith("mbx-")
+    ? await movieboxApi.getEpisodeStream(cleanEpId)
+    : await sankaApi.getEpisodeStream(cleanEpId);
+
   if (!streamData) return { title: "Nonton Anime Episode" };
 
   return {
@@ -30,14 +34,21 @@ export default async function WatchPage({ params }: PageProps) {
   const { episodeId } = await params;
   const cleanEpId = cleanSlug(episodeId);
 
-  const streamData = await sankaApi.getEpisodeStream(cleanEpId);
+  const isMovieBox = cleanEpId.startsWith("mbx-");
+
+  const streamData = isMovieBox
+    ? await movieboxApi.getEpisodeStream(cleanEpId)
+    : await sankaApi.getEpisodeStream(cleanEpId);
+
   if (!streamData) {
     notFound();
   }
 
   let animeDetail = null;
   if (streamData.animeId) {
-    animeDetail = await sankaApi.getAnimeDetail(cleanSlug(streamData.animeId));
+    animeDetail = streamData.animeId.startsWith("mbx-")
+      ? await movieboxApi.getAnimeDetail(streamData.animeId)
+      : await sankaApi.getAnimeDetail(cleanSlug(streamData.animeId));
   }
 
   const episodes = animeDetail?.episodeList || [];
@@ -53,12 +64,17 @@ export default async function WatchPage({ params }: PageProps) {
           <span>Kembali ke Detail Anime</span>
         </Link>
 
-        {streamData.releaseTime && (
+        {isMovieBox ? (
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-semibold">
+            <Clapperboard className="w-3.5 h-3.5" />
+            <span>MovieBox Direct MP4 (HD)</span>
+          </div>
+        ) : streamData.releaseTime ? (
           <div className="flex items-center gap-1 text-[#94a3b8]">
             <Calendar className="w-3.5 h-3.5" />
             <span>Diperbarui: {streamData.releaseTime}</span>
           </div>
-        )}
+        ) : null}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
@@ -70,7 +86,9 @@ export default async function WatchPage({ params }: PageProps) {
               {streamData.title}
             </h1>
             <p className="text-xs text-[#94a3b8] leading-relaxed">
-              Jika video mengalami buffering atau tidak dapat diputar, gunakan pilihan server alternatif di atas atau gunakan tombol unduh untuk menonton secara offline.
+              {isMovieBox
+                ? "Video ini diputar langsung via direct stream MovieBox berkualitas HD tanpa iklan eksternal."
+                : "Jika video mengalami buffering atau tidak dapat diputar, gunakan pilihan server alternatif di atas atau gunakan tombol unduh untuk menonton secara offline."}
             </p>
           </div>
         </div>

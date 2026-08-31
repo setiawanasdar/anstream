@@ -13,8 +13,10 @@ import {
   AlertCircle,
   Search,
   ArrowLeft,
+  Clapperboard,
 } from "lucide-react";
 import { sankaApi } from "@/lib/api/sanka";
+import { movieboxApi } from "@/lib/api/moviebox";
 import { BookmarkButton } from "@/components/anime/BookmarkButton";
 import { AnimeCard } from "@/components/anime/AnimeCard";
 import { getCleanSynopsis, cleanSlug } from "@/lib/utils";
@@ -28,7 +30,10 @@ interface PageProps {
 export async function generateMetadata({ params }: PageProps) {
   const { id } = await params;
   const cleanId = cleanSlug(id);
-  const anime = await sankaApi.getAnimeDetail(cleanId);
+
+  let anime = cleanId.startsWith("mbx-")
+    ? await movieboxApi.getAnimeDetail(cleanId)
+    : await sankaApi.getAnimeDetail(cleanId);
 
   if (!anime) {
     const formattedTitle = cleanId
@@ -47,9 +52,33 @@ export default async function AnimeDetailPage({ params }: PageProps) {
   const { id } = await params;
   const cleanId = cleanSlug(id);
 
-  const anime = await sankaApi.getAnimeDetail(cleanId);
+  // 1. If ID explicitly belongs to MovieBox
+  let anime = cleanId.startsWith("mbx-")
+    ? await movieboxApi.getAnimeDetail(cleanId)
+    : await sankaApi.getAnimeDetail(cleanId);
 
-  // If anime detail returns null from upstream API (older Otakudesu archive / batch layout)
+  // 2. Intelligent Auto-Fallback: If anime detail is null from Otakudesu (e.g. older unindexed/batch releases)
+  if (!anime && !cleanId.startsWith("mbx-")) {
+    const cleanQuery = cleanId
+      .replace(/-sub-indo|-subtitle-indonesia/g, "")
+      .replace(/-/g, " ")
+      .trim();
+
+    try {
+      const movieboxSearchResults = await movieboxApi.searchAnime(cleanQuery);
+      if (movieboxSearchResults.length > 0) {
+        const topMatch = movieboxSearchResults[0];
+        const mbxDetail = await movieboxApi.getAnimeDetail(topMatch.animeId);
+        if (mbxDetail) {
+          anime = mbxDetail;
+        }
+      }
+    } catch (err) {
+      console.warn("MovieBox fallback check error:", err);
+    }
+  }
+
+  // 3. Fallback screen if anime is still not found anywhere
   if (!anime) {
     const cleanQuery = cleanId
       .replace(/-sub-indo|-subtitle-indonesia/g, "")
@@ -79,7 +108,7 @@ export default async function AnimeDetailPage({ params }: PageProps) {
                 {cleanQuery}
               </h1>
               <p className="text-xs sm:text-sm text-[#94a3b8] leading-relaxed pt-1">
-                Data episode tunggal untuk judul anime lama ini sedang dalam proses pembaruan oleh server pusat upstream (biasanya berupa rilis batch BD).
+                Data episode tunggal untuk judul anime lama ini sedang dalam proses pembaruan oleh server pusat upstream.
               </p>
             </div>
           </div>
@@ -145,6 +174,8 @@ export default async function AnimeDetailPage({ params }: PageProps) {
   const latestEpisode = anime.episodeList && anime.episodeList.length > 0
     ? anime.episodeList[0]
     : null;
+
+  const isMovieBox = cleanId.startsWith("mbx-") || anime.type?.includes("MovieBox");
 
   return (
     <div className="space-y-8 pb-10">
@@ -216,6 +247,12 @@ export default async function AnimeDetailPage({ params }: PageProps) {
                   <span>{anime.duration}</span>
                 </div>
               )}
+              {isMovieBox && (
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-xs font-bold">
+                  <Clapperboard className="w-3.5 h-3.5" />
+                  <span>MovieBox Direct Stream</span>
+                </div>
+              )}
             </div>
 
             {anime.genreList && anime.genreList.length > 0 && (
@@ -242,7 +279,7 @@ export default async function AnimeDetailPage({ params }: PageProps) {
                   className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-[#6366f1] hover:bg-[#4f46e5] text-white font-semibold text-sm shadow-lg shadow-[#6366f1]/30 transition-all hover:scale-105"
                 >
                   <Play className="w-4 h-4 fill-current" />
-                  <span>Tonton Episode Terbaru</span>
+                  <span>Tonton Sekarang</span>
                 </Link>
               )}
 
@@ -260,12 +297,12 @@ export default async function AnimeDetailPage({ params }: PageProps) {
 
         <div className="relative z-10 mt-8 pt-6 border-t border-[#1e2c40] grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 text-xs text-[#94a3b8]">
           <div>
-            <span className="text-[#64748b] block mb-0.5">Studio:</span>
+            <span className="text-[#64748b] block mb-0.5">Studio / Sutradara:</span>
             <span className="font-semibold text-[#f1f5f9]">{anime.studios || "-"}</span>
           </div>
           <div>
-            <span className="text-[#64748b] block mb-0.5">Produser:</span>
-            <span className="font-semibold text-[#f1f5f9]">{anime.producers || "-"}</span>
+            <span className="text-[#64748b] block mb-0.5">Produser / Provider:</span>
+            <span className="font-semibold text-[#f1f5f9]">{isMovieBox ? "MovieBox Global" : anime.producers || "-"}</span>
           </div>
           <div>
             <span className="text-[#64748b] block mb-0.5">Tayang (Aired):</span>
@@ -294,7 +331,9 @@ export default async function AnimeDetailPage({ params }: PageProps) {
             <ListOrdered className="w-5 h-5 text-[#6366f1]" />
             <span>Semua Episode ({anime.episodeList?.length || 0})</span>
           </h2>
-          <span className="text-xs text-[#94a3b8]">Subtitle Indonesia HD</span>
+          <span className="text-xs text-[#94a3b8]">
+            {isMovieBox ? "MovieBox Direct MP4 (HD)" : "Subtitle Indonesia HD"}
+          </span>
         </div>
 
         {anime.episodeList && anime.episodeList.length > 0 ? (
